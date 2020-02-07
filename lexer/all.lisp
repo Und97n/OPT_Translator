@@ -1,5 +1,7 @@
-(uiop/package:define-package :lexer/all
+(uiop/package:define-package :translator/lexer/all
     (:use :cl
-          :lexer/lexer
-          :lexer/char-table)
+          :translator/lexer/lexer
+          :translator/lexer/char-table)
   (:export))
+
+(in-package :translator/lexer/all)
