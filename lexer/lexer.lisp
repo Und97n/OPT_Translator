@@ -9,54 +9,76 @@
 (defun string-lexer (str)
   (with-input-from-string (stream str) (stream-lexer stream)))
 
-(defmacro char-case (char cases &aux (char-type (gensym "CHAR-TYPE")))
-  `(let ((,char-type char (get-char-type ,char)))
-     (cond
-       (()))))
-
 (defun stream-lexer (stream)
   (let ((line 1)
         (column 0)
         (current-char)
         (lexems nil))
-    (labels ((%getc ()
-               (setf current-char (read-char stream nil nil))
-               (if current-char
-                   (let ((type (get-char-type current-char)))
-                     (if type
-                         (etypecase type
-                           (newline-char (incf line)
-                                         (setf column 1))
-                           (t (incf column)))
-                         (error "Lexer error at ~A:~A: wrong char: ~A"
-                                line
-                                column
-                                current-char))
-                     current-char)
-                   nil))
+    (labels ((%error (place)
+               (error "Lexer error at ~A:~A~%~A: ~A"
+                      line
+                      column
+                      place
+                      current-char))
+             (%getc ()
+               (setf current-char (read-char stream nil #\nul))
+               (case current-char
+                 (#\newline (incf line)
+                            (setf column 1))
+                 (otherwise (incf column)))
+               current-char)
+
+             (%%read-comment (ch)
+               (case (get-char-type ch)
+                 ((:rbracket)
+                  (%getc)
+                  t)
+                 ((:eof)
+                  (%error "End of file while reading comment"))
+                 (otherwise
+                  (%read-comment (%getc)))))
+
+             (%read-comment (ch)
+               (case (get-char-type ch)
+                 ((:asterisk)
+                  (%%read-comment (%getc)))
+                 ((:eof)
+                  (%error "End of file while reading comment"))
+                 (otherwise
+                  (%read-comment (%getc)))))
+
              (%read-number (ch &optional number-acc)
-               (etypecase (get-char-type ch)
-                 (number-char
+               (case (get-char-type ch)
+                 ((:number)
                   (%read-number (%getc)
                                 (cons ch number-acc)))
-                 (t
+                 (otherwise
                   (coerce number-acc 'string))))
+
              (%read-identifier (ch &optional identifier-acc)
-               (etypecase (get-char-type ch)
-                 (identifier-char
+               (case (get-char-type ch)
+                 ((:number :letter)
                   (%read-identifier (%getc)
                                     (cons ch identifier-acc)))
-                 (t
+                 (otherwise
                   (coerce identifier-acc 'string)))))
       (%getc)
-      (loop :while current-char
-         :do (etypecase (get-char-type (%getc))
-               (number-char
+      (loop :while (not (eq current-char #\nul))
+         :do (case (get-char-type current-char)
+               ((:number)
                 (push (%read-number current-char)
                       lexems))
-               (identifier-char
-                (break "~A: ~A" current-char lexems)
+               ((:letter)
                 (push (%read-identifier current-char)
                       lexems))
-               (space-char)))
+               ((:space)
+                (%getc))
+               ((:lbracket)
+                (case (get-char-type (%getc))
+                  ((:asterisk)
+                   (%read-comment (%getc)))
+                  (otherwise
+                   (%error "Unexpected character after '('"))))
+               (otherwise
+                (%error "Unexpected character"))))
       lexems)))
