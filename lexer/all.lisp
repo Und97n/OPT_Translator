@@ -2,6 +2,8 @@
     (:use :cl
           :translator/lexer/lexer
           :translator/lexer/char-table)
-  (:export))
+  (:export #:string-lexer
+           #:stream-lexer
+           #:load-char-table))
 
 (in-package :translator/lexer/all)

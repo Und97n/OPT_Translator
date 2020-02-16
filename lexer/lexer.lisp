@@ -1,25 +1,57 @@
 (uiop/package:define-package :translator/lexer/lexer
     (:use :cl
-          :translator/lexer/char-table)
+          :translator/lexer/char-table
+          :translator/common
+          :translator/utils)
   (:export #:stream-lexer
-           #:string-lexer))
+           #:string-lexer
+           #:lexem
+           #:lexem-column
+           #:lexem-line
+           #:lexem-value))
 
 (in-package :translator/lexer/lexer)
 
-(defun string-lexer (str)
-  (with-input-from-string (stream str) (stream-lexer stream)))
+(defparameter *keyword-table* (hash-table-from-alist
+                               '(("PROGRAM" . :program)
+                                 ("BEGIN" . :begin)
+                                 ("END" . :end)
+                                 ("PROCEDURE" . :procedure)
+                                 ("SIGNAL" . :signal)
+                                 ("COMPLEX" . :complex)
+                                 ("INTEGER" . :integer)
+                                 ("FLOAT" . :float)
+                                 ("BLOCKFLOAT" . :blockfloat)
+                                 ("EXT" . :ext))
+                               :test #'equal))
 
-(defun stream-lexer (stream)
+(defstruct lexem
+  line
+  column
+  value)
+
+(defun string-lexer (str translator)
+  (with-input-from-string (stream str) (stream-lexer stream translator)))
+
+(defun stream-lexer (stream translator)
   (let ((line 1)
         (column 0)
         (current-char)
         (lexems nil))
-    (labels ((%error (place)
+    (labels ((%current-position ()
+               (cons line column))
+
+             (%make-lexem (value &optional (position (%current-position)))
+               (make-lexem :line (car position) :column (cdr position)
+                           :value value))
+
+             (%error (place)
                (error "Lexer error at ~A:~A~%~A: ~A"
                       line
                       column
                       place
                       current-char))
+
              (%getc ()
                (setf current-char (read-char stream nil #\nul))
                (case current-char
@@ -33,6 +65,8 @@
                  ((:rbracket)
                   (%getc)
                   t)
+                 ((:asterisk)
+                  (%%read-comment (%getc)))
                  ((:eof)
                   (%error "End of file while reading comment"))
                  (otherwise
@@ -47,38 +81,43 @@
                  (otherwise
                   (%read-comment (%getc)))))
 
-             (%read-number (ch &optional number-acc)
+             (%read-identifier (ch &optional
+                                   (starting-position (%current-position))
+                                   identifier-acc)
                (case (get-char-type ch)
-                 ((:number)
-                  (%read-number (%getc)
-                                (cons ch number-acc)))
-                 (otherwise
-                  (coerce number-acc 'string))))
-
-             (%read-identifier (ch &optional identifier-acc)
-               (case (get-char-type ch)
-                 ((:number :letter)
+                 ((:comma :semicolon :colon :eof :space :lbracket :rbracket)
+                  (let ((string (coerce (nreverse identifier-acc)
+                                        'string)))
+                    (%make-lexem (or (gethash string *keyword-table*)
+                                     (ensure-identifier translator string))
+                                 starting-position)))
+                 ((:letter :number)
                   (%read-identifier (%getc)
+                                    starting-position
                                     (cons ch identifier-acc)))
                  (otherwise
-                  (coerce identifier-acc 'string)))))
+                  (%error "Wron char while reading identifier")))))
       (%getc)
-      (loop :while (not (eq current-char #\nul))
-         :do (case (get-char-type current-char)
-               ((:number)
-                (push (%read-number current-char)
-                      lexems))
-               ((:letter)
-                (push (%read-identifier current-char)
-                      lexems))
-               ((:space)
-                (%getc))
-               ((:lbracket)
-                (case (get-char-type (%getc))
-                  ((:asterisk)
-                   (%read-comment (%getc)))
-                  (otherwise
-                   (%error "Unexpected character after '('"))))
-               (otherwise
-                (%error "Unexpected character"))))
-      lexems)))
+      (loop
+         :while (not (eq current-char #\nul))
+         :do (let ((type (get-char-type current-char)))
+               (case type
+                 ((:letter)
+                  (push (%read-identifier current-char)
+                        lexems))
+                 ((:space)
+                  (%getc))
+                 ((:colon :semicolon :comma :rbracket)
+                  (push (%make-lexem type)
+                        lexems)
+                  (%getc))
+                 ((:lbracket)
+                  (case (get-char-type (%getc))
+                    ((:asterisk)
+                     (%read-comment (%getc)))
+                    (otherwise
+                     (push (%make-lexem :lbracket)
+                           lexems))))
+                 (otherwise
+                  (%error "Unexpected character")))))
+      (nreverse lexems))))
