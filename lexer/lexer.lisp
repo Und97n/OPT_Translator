@@ -24,7 +24,6 @@
                                  ("BLOCKFLOAT" . :blockfloat)
                                  ("EXT" . :ext))
                                :test #'equal))
-
 (defstruct lexem
   line
   column
@@ -45,18 +44,11 @@
                (make-lexem :line (car position) :column (cdr position)
                            :value value))
 
-             (%error (place)
-               (error "Lexer error at ~A:~A~%~A: ~A"
-                      line
-                      column
-                      place
-                      current-char))
-
              (%getc ()
                (setf current-char (read-char stream nil #\nul))
                (case current-char
                  (#\newline (incf line)
-                            (setf column 1))
+                            (setf column 0))
                  (otherwise (incf column)))
                current-char)
 
@@ -68,7 +60,9 @@
                  ((:asterisk)
                   (%%read-comment (%getc)))
                  ((:eof)
-                  (%error "End of file while reading comment"))
+                  (break "Lexer error at ~A:~A~%End of file while reading comment"
+                         line
+                         column))
                  (otherwise
                   (%read-comment (%getc)))))
 
@@ -77,7 +71,10 @@
                  ((:asterisk)
                   (%%read-comment (%getc)))
                  ((:eof)
-                  (%error "End of file while reading comment"))
+                  (break "Lexer error at ~A:~A~%End of file while reading comment"
+                         line
+                         column)
+                  (return-from stream-lexer (nreverse lexems)))
                  (otherwise
                   (%read-comment (%getc)))))
 
@@ -85,18 +82,16 @@
                                    (starting-position (%current-position))
                                    identifier-acc)
                (case (get-char-type ch)
-                 ((:comma :semicolon :colon :eof :space :lbracket :rbracket)
-                  (let ((string (coerce (nreverse identifier-acc)
-                                        'string)))
-                    (%make-lexem (or (gethash string *keyword-table*)
-                                     (ensure-identifier translator string))
-                                 starting-position)))
                  ((:letter :number)
                   (%read-identifier (%getc)
                                     starting-position
                                     (cons ch identifier-acc)))
                  (otherwise
-                  (%error "Wron char while reading identifier")))))
+                  (let ((string (coerce (nreverse identifier-acc)
+                                        'string)))
+                    (%make-lexem (or (gethash string *keyword-table*)
+                                     (ensure-identifier translator string))
+                                 starting-position))))))
       (%getc)
       (loop
          :while (not (eq current-char #\nul))
@@ -119,5 +114,9 @@
                      (push (%make-lexem :lbracket)
                            lexems))))
                  (otherwise
-                  (%error "Unexpected character")))))
+                  (break "Lexer error at ~A:~A~%Unexpected character: ~A"
+                         line
+                         column
+                         current-char)
+                  (return-from stream-lexer (nreverse lexems))))))
       (nreverse lexems))))

@@ -5,9 +5,8 @@
 
 (in-package :translator/lexer/char-table)
 
-(defparameter *char-table* nil)
+(defparameter *char-table* (make-array 128 :initial-element 'nil))
 
-(setf *char-table* (make-array 128 :initial-element 'nil))
 (labels ((%rcl (type &rest chars)
            (loop :for char :in chars
               :do (setf (aref *char-table* (char-code char))
@@ -17,7 +16,6 @@
               :do (setf (aref *char-table* char)
                         type))))
   (%rcs :number #\0 #\9)
-  (%rcs :letter #\a #\z)
   (%rcs :letter #\A #\Z)
   (%rcl :eof #\nul)
   (%rcl :semicolon #\;)
@@ -26,7 +24,8 @@
   (%rcl :colon #\:)
   (%rcl :comma #\,)
   (%rcl :asterisk #\*)
-  (%rcl :space #\  #\newline #\tab))
+  (%rcl :minus #\-)
+  (%rcl :space #\space #\newline #\tab #\Vt))
 
 (defun get-char-type (char)
   (when char

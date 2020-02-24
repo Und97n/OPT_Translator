@@ -4,17 +4,29 @@
                 #:ensure-gethash)
   (:export #:translator
            #:identifier-table
-           #:ensure-identifier))
+           #:ttt-table
+           #:ensure-identifier
+           #:ensure-ttt))
 
 (in-package :translator/common)
 
 (defclass translator ()
-  ((identifier-table
-    :initform (make-hash-table :test #'eq))
+  ((ttt-table
+    :initform (make-hash-table :test #'equal))
+   (identifier-table
+    :initform (make-hash-table :test #'equal))
    (identifier-id-pointer
-    :initform 0)))
+    :initform 0)
+   (ttt-id-pointer
+    :initform 65536)))
 
-(defmethod ensure-identifier (tr str)
+(defun ensure-ttt (tr str)
+  (with-slots (ttt-table ttt-id-pointer) tr
+    (ensure-gethash str
+                    ttt-table
+                    (incf ttt-id-pointer))))
+
+(defun ensure-identifier (tr str)
   (with-slots (identifier-table identifier-id-pointer) tr
     (ensure-gethash str
                     identifier-table
