@@ -12,18 +12,29 @@
 
 (in-package :translator/lexer/lexer)
 
-(defparameter *keyword-table* (hash-table-from-alist
-                               '(("PROGRAM" . :program)
-                                 ("BEGIN" . :begin)
-                                 ("END" . :end)
-                                 ("PROCEDURE" . :procedure)
-                                 ("SIGNAL" . :signal)
-                                 ("COMPLEX" . :complex)
-                                 ("INTEGER" . :integer)
-                                 ("FLOAT" . :float)
-                                 ("BLOCKFLOAT" . :blockfloat)
-                                 ("EXT" . :ext))
-                               :test #'equal))
+(defparameter *keyword-table*
+  (hash-table-from-alist
+   (list (cons "PROGRAM"
+               +keyword-program-id+)
+         (cons "BEGIN"
+               +keyword-begin-id+)
+         (cons "END"
+               +keyword-end-id+)
+         (cons "PROCEDURE"
+               +keyword-procedure-id+)
+         (cons "SIGNAL"
+               +keyword-signal-id+)
+         (cons "COMPLEX"
+               +keyword-complex-id+)
+         (cons "INTEGER"
+               +keyword-integer-id+)
+         (cons "FLOAT"
+               +keyword-float-id+)
+         (cons "BLOCKFLOAT"
+               +keyword-blockfloat-id+)
+         (cons "EXT"
+               +keyword-ext-id+))
+   :test #'equal))
 (defstruct lexem
   line
   column
@@ -54,13 +65,13 @@
 
              (%%read-comment (ch)
                (case (get-char-type ch)
-                 ((:rbracket)
+                 (:rbracket
                   (%getc)
                   t)
-                 ((:asterisk)
+                 (:asterisk
                   (%%read-comment (%getc)))
-                 ((:eof)
-                  (break "Lexer error at ~A:~A~%End of file while reading comment"
+                 (:eof
+                  (error "Lexer error at ~A:~A~%End of file while reading comment"
                          line
                          column))
                  (otherwise
@@ -68,10 +79,10 @@
 
              (%read-comment (ch)
                (case (get-char-type ch)
-                 ((:asterisk)
+                 (:asterisk
                   (%%read-comment (%getc)))
-                 ((:eof)
-                  (break "Lexer error at ~A:~A~%End of file while reading comment"
+                 (:eof
+                  (error "Lexer error at ~A:~A~%End of file while reading comment"
                          line
                          column)
                   (return-from stream-lexer (nreverse lexems)))
@@ -97,24 +108,36 @@
          :while (not (eq current-char #\nul))
          :do (let ((type (get-char-type current-char)))
                (case type
-                 ((:letter)
+                 (:letter
                   (push (%read-identifier current-char)
                         lexems))
-                 ((:space)
+                 (:space
                   (%getc))
-                 ((:colon :semicolon :comma :rbracket)
-                  (push (%make-lexem type)
+                 (:colon
+                  (push (%make-lexem +delimiter-colon-id+)
                         lexems)
                   (%getc))
-                 ((:lbracket)
+                 (:semicolon
+                  (push (%make-lexem +delimiter-semicolon-id+)
+                        lexems)
+                  (%getc))
+                 (:comma
+                  (push (%make-lexem +delimiter-comma-id+)
+                        lexems)
+                  (%getc))
+                 (:rbracket
+                  (push (%make-lexem +delimiter-rbracket-id+)
+                        lexems)
+                  (%getc))
+                 (:lbracket
                   (case (get-char-type (%getc))
-                    ((:asterisk)
+                    (:asterisk
                      (%read-comment (%getc)))
                     (otherwise
-                     (push (%make-lexem :lbracket)
+                     (push (%make-lexem +delimiter-lbracket-id+)
                            lexems))))
                  (otherwise
-                  (break "Lexer error at ~A:~A~%Unexpected character: ~A"
+                  (error "Lexer error at ~A:~A~%Unexpected character: ~A"
                          line
                          column
                          current-char)

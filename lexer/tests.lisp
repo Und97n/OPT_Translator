@@ -24,8 +24,4 @@
       (with-slots (identifier-table ttt-table) translator
         (format t "~%IDENTIFIERS:~%~:{~4T~7A -- ~2A~%~}" (mapcar (lambda (c)
                                                                    (list (car c) (cdr c)))
-                                                                 (hash-table-to-alist identifier-table)))
-        (format t "~%TTT:~%~:{~4T~7A -- ~2A~%~}" (mapcar (lambda (c)
-                                                           (list (car c) (cdr c)))
-                                                         (hash-table-to-alist ttt-table))))))
-  )
+                                                                 (hash-table-to-alist identifier-table)))))))
