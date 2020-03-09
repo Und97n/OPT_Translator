@@ -35,6 +35,7 @@
          (cons "EXT"
                +keyword-ext-id+))
    :test #'equal))
+
 (defstruct lexem
   line
   column
@@ -142,4 +143,5 @@
                          column
                          current-char)
                   (return-from stream-lexer (nreverse lexems))))))
+      (finish-lexer translator)
       (nreverse lexems))))

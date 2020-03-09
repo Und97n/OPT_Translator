@@ -1,4 +1,4 @@
-PROGRAM Q;PROCEDURE P001(A,B,C:SIGNAL,COMPLEX,FLOAT);  (***
+PROGRAM Q;PROCEDURE P001(A,B,C:SIGNAL COMPLEX FLOAT;);  (***
                                                     **
                                                     **dasd;v
                                                     ]s
@@ -7,4 +7,4 @@ PROGRAM Q;PROCEDURE P001(A,B,C:SIGNAL,COMPLEX,FLOAT);  (***
 
                                                     **
                                                     ***********(**)
-PROCEDURE P002(E,F:BLOCKFLOAT,EXT)BEGIN END;
+PROCEDURE P002(E,F:BLOCKFLOAT EXT;); BEGIN END;
