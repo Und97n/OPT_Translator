@@ -12,16 +12,19 @@
 (defun run-tests (&rest paths)
   (mapc #'run-test paths))
 
-(defun tree-to-pretty-form (syntax-tree translator)
-  (labels ((%process-element (x)
+(defun print-tree (syntax-tree translator)
+  (labels ((%process-element (x spaces)
              (cond
                ((numberp x)
-                (id-to-string x nil translator))
+                (format t "~%~{~A~}[~A:~A]" spaces x (id-to-string x nil translator)))
                ((listp x)
-                (mapcar #'%process-element x))
+                (format t "~%~{~A~}<~A>" spaces (first x))
+                (mapc (lambda (x)
+                        (%process-element x (cons ".." spaces)))
+                      (rest x)))
                (t
-                x))))
-    (%process-element syntax-tree)))
+                (format t "~%~{~A~}~A" spaces x)))))
+    (%process-element syntax-tree nil)))
 
 (defun run-test (test-path)
   (format t "~2%TESTING ~A:~%" test-path)
@@ -35,7 +38,8 @@
                               (lexem-column x)
                               (lexem-value x)))
                       lexems))
-      (format t "TREE:~%~4T~A~%" (tree-to-pretty-form tree translator))
+      (format t "TREE:~%")
+      (print-tree tree translator)
       (with-slots (identifier-table ttt-table) translator
         (format t "~%IDENTIFIERS:~%~:{~4T~7A -- ~2A~%~}"
                 (mapcar (lambda (c)

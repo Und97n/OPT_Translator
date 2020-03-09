@@ -27,7 +27,7 @@
                                         nil
                                         translator))))
              (%identifier ()
-               (prog1 (%require-lexem current-lexem #'is-identifier-id "identifier")
+               (prog1 (list :identifier (%require-lexem current-lexem #'is-identifier-id "identifier"))
                  (%getl)))
 
              (%attribute ()
@@ -44,15 +44,17 @@
                current-lexem)
 
              (%identifiers-list ()
-               (loop :collect (%identifier)
-                  :while (when (and current-lexem
-                                    (= (lexem-value current-lexem) +delimiter-comma-id+))
-                           (%getl))))
+               (cons :identifiers-list
+                     (loop :collect (%identifier)
+                        :while (when (and current-lexem
+                                          (= (lexem-value current-lexem) +delimiter-comma-id+))
+                                 (%getl)))))
 
              (%attributes-list ()
-               (loop :collect (%attribute)
-                  :while (and current-lexem
-                              (is-attribute-id (lexem-value current-lexem)))))
+               (cons :attributes-list
+                     (loop :collect (%attribute)
+                        :while (and current-lexem
+                                    (is-attribute-id (lexem-value current-lexem))))))
 
              (%declaration ()
                (let ((inds (%identifiers-list)))
@@ -62,14 +64,15 @@
                    (list :declaration inds attrs))))
 
              (%parameters-list ()
-               (when (= (lexem-value current-lexem)
-                        +delimiter-lbracket-id+)
-                 (prog2
-                     (%require-lexem-id +delimiter-lbracket-id+ "lbracket")
-                     (loop :while (and current-lexem
-                                       (is-identifier-id (lexem-value current-lexem)))
-                        :collect (%declaration))
-                   (%require-lexem-id +delimiter-rbracket-id+ "rbracket"))))
+               (cons :parameters-list
+                     (when (= (lexem-value current-lexem)
+                              +delimiter-lbracket-id+)
+                       (prog2
+                           (%require-lexem-id +delimiter-lbracket-id+ "lbracket")
+                           (loop :while (and current-lexem
+                                             (is-identifier-id (lexem-value current-lexem)))
+                              :collect (%declaration))
+                         (%require-lexem-id +delimiter-rbracket-id+ "rbracket")))))
 
              (%procedure ()
                (%require-lexem-id +keyword-procedure-id+ "PROCEDURE")
@@ -78,17 +81,22 @@
                  (%require-lexem-id +delimiter-semicolon-id+ "semicolon")
                  (list :procedure name plist)))
 
+             (%statements-list ()
+               (list :statements-list nil))
+
              (%declarations ()
-               (loop :while (and current-lexem
-                                 (= (lexem-value current-lexem)
-                                    +keyword-procedure-id+))
-                  :collect (%procedure)))
+               (cons :declarations
+                     (loop :while (and current-lexem
+                                       (= (lexem-value current-lexem)
+                                          +keyword-procedure-id+))
+                        :collect (%procedure))))
 
              (%block ()
-               (let ((decls (%declarations)))
+               (let ((stl (%statements-list))
+                     (decls (%declarations)))
                  (%require-lexem-id +keyword-begin-id+ "BEGIN")
                  (%require-lexem-id +keyword-end-id+ "END")
-                 (list :block decls)))
+                 (list :block stl decls)))
 
              (%program ()
                (%require-lexem-id +keyword-program-id+ "PROGRAM")
