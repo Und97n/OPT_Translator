@@ -24,7 +24,6 @@
                           (lexem-column lexem)
                           expected
                           (id-to-string (lexem-value lexem)
-                                        nil
                                         translator))))
              (%identifier ()
                (prog1 (list :identifier (%require-lexem current-lexem #'is-identifier-id "identifier"))

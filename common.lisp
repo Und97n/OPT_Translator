@@ -1,5 +1,5 @@
 (uiop/package:define-package :translator/common
-    (:use :cl)
+  (:use :cl)
   (:import-from :translator/utils
                 #:ensure-gethash)
   (:export #:translator
@@ -64,8 +64,8 @@
   (and (>= id 260)
        (<= id 263)))
 
-(defun id-to-string (id stream translator)
-  (format stream "~A"
+(defun id-to-string (id translator)
+  (format nil "~A"
           (cond
             ((= id +delimiter-colon-id+) ":")
             ((= id +delimiter-semicolon-id+) ";")
